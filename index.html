@@ -72,13 +72,12 @@
                 // CLOSE EVENT
                 socket.onclose = (closeEventObject) => {
                     console.log("CLOSE EVENT FIRED. CLOSE OBJECT", closeEventObject);
-                    // let's style our closure text consistently across all scenarios
                     socketStatus.className = "closed";
                     table.innerHTML = "";
                     // using JavaScript's switch statement 
                     switch (closeEventObject.code) {
                         case 1006: // network problem (e.g. your websocket server is not running)
-                            socketStatus.innerHTML = "Something is wrong with your WS newtork connection";
+                            socketStatus.innerHTML = "Something is wrong with your WS network connection";
                             break;
                         case 1001: // if a peer (client or server) closes the connection immediately
                             socketStatus.innerHTML = `Disconnected reason: ${closeEventObject.reason}`;
