@@ -3,6 +3,12 @@ const HTTP = require('http');
 const CONSTANTS = require('./custom_lib/websocket_constants');
 const METHODS = require('./custom_lib/websocket_methods');
 
+const GET_INFO = 1;
+const GET_LENGTH = 2;
+const GET_MASK_KEY = 3;
+const GET_PAYLOAD = 4;
+const SEND_ECHO = 5;
+
 const HTTP_SERVER = HTTP.createServer((req, res) => {
     res.writeHead(200);
     res.end('Greetings')
@@ -41,5 +47,73 @@ function upgradeConnection(req, socket, head) {
 }
 
 function startWebSocketConnection(socket) {
+    console.log(`WebSocket connection established with Port ${socket.remotePort}`);
 
+    const receiver = new WebScoketReceiver(socket);
+
+    socket.on('data', (chunk) => {
+        receiver.processBuffer(chunk);
+    });
+
+    socket.on('end', () => {
+        console.log('WebSocket connection ended with Port ' + socket.remotePort);
+    });
+};
+
+class WebSocketReceiver {
+    constructor(socket) {
+        this.socket = socket;
+    }
+
+    _buffersArray = [];
+    _bufferedBytesLength = 0;
+    _taskLoop = false;
+    _task = GET_INFO;
+
+    processBuffer(chunk) {
+        this._buffersArray.push(chunk);
+        this._bufferedBytesLength += chunk.length;
+
+        this.startTaskLoop();
+    }
+
+    startTaskLoop() {
+        this._taskLoop = true;
+
+        do {
+            switch(this._task) {
+                case GET_INFO:
+                    this._getInfo();
+                    break;
+                default:
+                    break;
+            }
+        } while (this._taskLoop); {
+
+        }
+    }
+
+    _getInfo() {
+        const infoBuffer = this._consumeHeaders(CONSTANTS.MIN_FRAME_SIZE);
+        const firstByte = infoBuffer[0];
+        const secondByte = infoBuffer[1];
+
+        
+    }
+
+    _consumeHeaders(n) {
+        this._bufferedBytesLength -= n;
+
+        if(n === this._buffersArray[0].length) {
+            return this._buffersArray.shift();
+        }
+
+        if(n < this._buffersArray[0].length) {
+            const infoBuffer = this._buffersArray[0];
+            this._buffersArray[0] = this._buffersArray[0].slice(n);
+            return infoBuffer.slice(0, n);
+        } else {
+            throw new Error('Cannot extract more data from WS frame than actual frame size');
+        }
+    }
 };

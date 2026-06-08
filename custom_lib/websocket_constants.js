@@ -14,5 +14,6 @@ module.exports = {
         'http://127.0.0.1:5500',
         'null'
     ],
-    GUID: '258EAFA5-E914-47DA-95CA-C5AB0DC85B11'
+    GUID: '258EAFA5-E914-47DA-95CA-C5AB0DC85B11',
+    MIN_FRAME_SIZE: 2
 }
