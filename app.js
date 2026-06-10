@@ -49,7 +49,7 @@ function upgradeConnection(req, socket, head) {
 function startWebSocketConnection(socket) {
     console.log(`WebSocket connection established with Port ${socket.remotePort}`);
 
-    const receiver = new WebScoketReceiver(socket);
+    const receiver = new WebSocketReceiver(socket);
 
     socket.on('data', (chunk) => {
         receiver.processBuffer(chunk);
@@ -69,6 +69,10 @@ class WebSocketReceiver {
     _bufferedBytesLength = 0;
     _taskLoop = false;
     _task = GET_INFO;
+    _fin = false;
+    _opcode = null;
+    _masked = false;
+    _initialPayloadSizeIndicator = 0;
 
     processBuffer(chunk) {
         this._buffersArray.push(chunk);
@@ -85,6 +89,9 @@ class WebSocketReceiver {
                 case GET_INFO:
                     this._getInfo();
                     break;
+                case GET_LENGTH:
+                    this._getLength();
+                    break;
                 default:
                     break;
             }
@@ -98,7 +105,18 @@ class WebSocketReceiver {
         const firstByte = infoBuffer[0];
         const secondByte = infoBuffer[1];
 
-        
+        this._fin = (firstByte & 0b10000000) === 0b10000000;
+        this._opcode = firstByte & 0b00001111;
+        this._masked = (secondByte & 0b10000000) === 0b10000000;
+        this._initialPayloadSizeIndicator = secondByte & 0b01111111;
+
+        console.log(`FIN: ${this._fin}, Opcode: ${this._opcode}, Masked: ${this._masked}, Initial Payload Size Indicator: ${this._initialPayloadSizeIndicator}`);   
+
+        if(!this._masked) {
+            throw new Error('Mask is not set by the client')
+        }
+
+        this._task = GET_LENGTH;
     }
 
     _consumeHeaders(n) {
@@ -115,5 +133,9 @@ class WebSocketReceiver {
         } else {
             throw new Error('Cannot extract more data from WS frame than actual frame size');
         }
+    }
+
+    _getLength() {
+        
     }
 };
