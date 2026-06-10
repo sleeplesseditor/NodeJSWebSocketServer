@@ -73,6 +73,7 @@ class WebSocketReceiver {
     _opcode = null;
     _masked = false;
     _initialPayloadSizeIndicator = 0;
+    _framePayloadLength = 0;
 
     processBuffer(chunk) {
         this._buffersArray.push(chunk);
@@ -136,6 +137,22 @@ class WebSocketReceiver {
     }
 
     _getLength() {
-        
+        switch(this._initialPayloadSizeIndicator) {
+            case CONSTANTS.MEDIUM_DATA_FLAG:
+                let mediumPayloadLengthBuffer = this._consumeHeaders(CONSTANTS.MEDIUM_SIZE_CONSUMPTION);
+                this._framePayloadLength = mediumPayloadLengthBuffer.readUInt16BE();
+                this.processLength();
+                break;
+            case CONSTANTS.LARGE_DATA_FLAG:
+                let largePayloadLengthBuffer = this._consumeHeaders(CONSTANTS.LARGE_SIZE_CONSUMPTION);
+                let bufBigInt = largePayloadLengthBuffer.readBigUInt64BE();
+                this._framePayloadLength = Number(bufBigInt);
+                this.processLength();
+                break;
+            default:
+                this._framePayloadLength = this._initialPayloadSizeIndicator;
+                this.processLength();
+                break;
+        }
     }
 };
