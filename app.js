@@ -74,6 +74,9 @@ class WebSocketReceiver {
     _masked = false;
     _initialPayloadSizeIndicator = 0;
     _framePayloadLength = 0;
+    _maximumPayloadSize = 1024 * 1024;
+    _totalPayloadLength = 0;
+    _mask = Buffer.alloc(CONSTANTS.MASK_LENGTH);
 
     processBuffer(chunk) {
         this._buffersArray.push(chunk);
@@ -92,6 +95,12 @@ class WebSocketReceiver {
                     break;
                 case GET_LENGTH:
                     this._getLength();
+                    break;
+                case GET_MASK_KEY:
+                    this._getMaskKey();
+                    break;
+                case GET_PAYLOAD:
+                    this._getPayload();
                     break;
                 default:
                     break;
@@ -141,18 +150,33 @@ class WebSocketReceiver {
             case CONSTANTS.MEDIUM_DATA_FLAG:
                 let mediumPayloadLengthBuffer = this._consumeHeaders(CONSTANTS.MEDIUM_SIZE_CONSUMPTION);
                 this._framePayloadLength = mediumPayloadLengthBuffer.readUInt16BE();
-                this.processLength();
+                this._processLength();
                 break;
             case CONSTANTS.LARGE_DATA_FLAG:
                 let largePayloadLengthBuffer = this._consumeHeaders(CONSTANTS.LARGE_SIZE_CONSUMPTION);
                 let bufBigInt = largePayloadLengthBuffer.readBigUInt64BE();
                 this._framePayloadLength = Number(bufBigInt);
-                this.processLength();
+                this._processLength();
                 break;
             default:
                 this._framePayloadLength = this._initialPayloadSizeIndicator;
-                this.processLength();
+                this._processLength();
                 break;
         }
+    }
+
+    _processLength() {
+        this._totalPayloadLength = this._framePayloadLength;
+
+        if(this._totalPayloadLength > this._maximumPayloadSize) {
+            throw new Error('Data is too big');
+        }
+
+        this._task = GET_MASK_KEY;
+    }
+
+    _getMaskKey() {
+        this._mask = this._consumeHeaders(CONSTANTS.MASK_LENGTH);
+        this._task = GET_PAYLOAD;
     }
 };
