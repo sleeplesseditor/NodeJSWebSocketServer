@@ -113,6 +113,11 @@ class WebSocketReceiver {
     }
 
     _getInfo() {
+        if(this._bufferedBytesLength < CONSTANTS.MIN_FRAME_SIZE) {
+            this._taskLoop = false;
+            return;
+        }
+
         const infoBuffer = this._consumeHeaders(CONSTANTS.MIN_FRAME_SIZE);
         const firstByte = infoBuffer[0];
         const secondByte = infoBuffer[1];
@@ -190,12 +195,20 @@ class WebSocketReceiver {
 
         this._framesReceived++;
 
-        let fullMaskedPayloadBuffer = this.consumePayload(this._framePayloadLength);
+        let frameMaskedPayloadBuffer = this._consumePayload(this._framePayloadLength);
 
-        let fullUnmaskedPayloadBuffer = FUNCTIONS.unMaskPayload(fullMaskedPayloadBuffer, this._mask);
+        let frameUnmaskedPayloadBuffer = FUNCTIONS.unMaskPayload(frameMaskedPayloadBuffer, this._mask);
 
-        if(fullUnMaskedPayloadBuffer.length) {
-            this._fragments.push(fullUnmaskedPayloadBuffer);
+        if(this._opcode === CONSTANTS.OPCODE_CLOSE_FRAME) {
+            throw new Error('Server has not dealt with a closure frame yet');
+        }
+
+        if([CONSTANTS.OPCODE_PING_FRAME, CONSTANTS.OPCODE_PONG_FRAME, CONSTANTS.OPCODE_BINARY_FRAME].includes(this._opcode)) {
+            throw new Error('Server has not dealt with a ping, pong, or binary frame yet');
+        }
+
+        if(frameUnMaskedPayloadBuffer.length) {
+            this._fragments.push(frameUnmaskedPayloadBuffer);
         };
 
         if(!this._fin) {
@@ -216,6 +229,7 @@ class WebSocketReceiver {
             const currentBuffer = this._buffersArray[0];
             const bytesToRead = Math.min(n - totalBytesRead, currentBuffer.length);
             currentBuffer.copy(payloadBuffer, totalBytesRead, 0, bytesToRead);
+            totalBytesRead += bytesToRead;
 
             if(bytesToRead < currentBuffer.length) {
                 this._buffersArray[0] = currentBuffer.slice(bytesToRead);
