@@ -78,6 +78,7 @@ class WebSocketReceiver {
     _totalPayloadLength = 0;
     _mask = Buffer.alloc(CONSTANTS.MASK_LENGTH);
     _framesReceived = 0;
+    _fragments = [];
 
     processBuffer(chunk) {
         this._buffersArray.push(chunk);
@@ -190,6 +191,19 @@ class WebSocketReceiver {
         this._framesReceived++;
 
         let fullMaskedPayloadBuffer = this.consumePayload(this._framePayloadLength);
+
+        let fullUnmaskedPayloadBuffer = FUNCTIONS.unMaskPayload(fullMaskedPayloadBuffer, this._mask);
+
+        if(fullUnMaskedPayloadBuffer.length) {
+            this._fragments.push(fullUnmaskedPayloadBuffer);
+        };
+
+        if(!this._fin) {
+            this._task = GET_INFO;
+        } else {
+            console.log('Total frames received for this message: ' + this._framesReceived);
+            this._task = SEND_ECHO;
+        }
     }
 
     consumePayload(n) {
@@ -209,7 +223,7 @@ class WebSocketReceiver {
                 this._buffersArray.shift();
             }
         }
-        
+
         return payloadBuffer;
     }
 };

@@ -42,8 +42,18 @@ function createUpgradeHeaders(clientKey) {
     return upgradeHeaders;
 }
 
+function unMaskPayload(payloadBuffer, mask) {
+    for(let i = 0; i < payloadBuffer.length; i++) {
+        // const maskByte = mask[i % CONSTANTS.MASK_LENGTH];
+        payloadBuffer[i] = payloadBuffer[i] ^ maskKey[i % CONSTANTS.MASK_LENGTH];
+    }
+
+    return payloadBuffer;
+}
+
 module.exports = {
     isOriginAllowed,
     check,
-    createUpgradeHeaders
+    createUpgradeHeaders,
+    unMaskPayload
 }
