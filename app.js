@@ -77,6 +77,7 @@ class WebSocketReceiver {
     _maximumPayloadSize = 1024 * 1024;
     _totalPayloadLength = 0;
     _mask = Buffer.alloc(CONSTANTS.MASK_LENGTH);
+    _framesReceived = 0;
 
     processBuffer(chunk) {
         this._buffersArray.push(chunk);
@@ -178,5 +179,37 @@ class WebSocketReceiver {
     _getMaskKey() {
         this._mask = this._consumeHeaders(CONSTANTS.MASK_LENGTH);
         this._task = GET_PAYLOAD;
+    }
+
+    _getPayload() {
+        if(this._framePayloadLength > this._bufferedBytesLength) {
+            this._taskLoop = false;
+            return;
+        }
+
+        this._framesReceived++;
+
+        let fullMaskedPayloadBuffer = this.consumePayload(this._framePayloadLength);
+    }
+
+    consumePayload(n) {
+        this._bufferedBytesLength -= n;
+
+        const payloadBuffer = Buffer.alloc(n);
+        let totalBytesRead = 0;
+
+        while(totalBytesRead < n) {
+            const currentBuffer = this._buffersArray[0];
+            const bytesToRead = Math.min(n - totalBytesRead, currentBuffer.length);
+            currentBuffer.copy(payloadBuffer, totalBytesRead, 0, bytesToRead);
+
+            if(bytesToRead < currentBuffer.length) {
+                this._buffersArray[0] = currentBuffer.slice(bytesToRead);
+            } else {
+                this._buffersArray.shift();
+            }
+        }
+        
+        return payloadBuffer;
     }
 };
