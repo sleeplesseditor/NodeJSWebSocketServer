@@ -8,11 +8,12 @@
             <h1>WebSockets Echo Demo</h1>
             <button type="submit" id="open_ws">Open WS</button>
             <div id="status">Status: Not connected</div>
+            <div id="server-response"></div>
             <!-- message table -->
             <ul id="table"></ul>
             <!-- form -->
             <form id="form">
-                <textarea id="message" placeholder="Write your message here..." required></textarea>
+                <textarea id="message" placeholder="Write your message here..."></textarea>
                 <button type="submit">Send Message</button>
                 <button id="close_ws">Close Connection</button>
             </form>
@@ -25,6 +26,7 @@
             //form
             let form = document.getElementById("form");
             // other message related items
+            let serverResponse = document.getElementById("server-response");
             let socketStatus = document.getElementById("status");
             let table = document.getElementsByTagName("ul")[0];
             let message = document.getElementById("message");
@@ -54,6 +56,8 @@
                     console.log("SOCKET CONNECTING STATUS IS: " + socket.readyState);
                     // reset table values
                     table.innerHTML = "";
+                    serverResponse.innerHTML = "";
+                    message.placeholder = "";
                     // provide client-side feedback
                     console.log("SOCKET CONNECTING STATUS IS: " + socket.readyState);
                     socketStatus.innerHTML = `Connected to: ${openEvent.currentTarget.url}`;
@@ -89,15 +93,36 @@
                     table.innerHTML = "";
                     // using JavaScript's switch statement 
                     switch (closeEventObject.code) {
-                        case 1006: // network problem (e.g. your websocket server is not running)
-                            socketStatus.innerHTML = "Something is wrong with your WS network connection";
-                            break;
                         case 1001: // if a peer (client or server) closes the connection immediately
                             socketStatus.innerHTML = `Disconnected reason: ${closeEventObject.reason}`;
                             table.innerHTML = "";
                             break; 
+                        case 1002:
+                            socketStatus.innerHTML = `Disconnected reason: ${closeEventObject.reason}`;
+                            table.innerHTML = "";
+                            serverResponse.innerHTML = `The server responded: ${closeEventObject.reason}`
+                            break;
+                        case 1003:
+                            socketStatus.innerHTML = `Unsupported data type`;
+                            table.innerHTML = "";
+                            serverResponse.innerHTML = `The server responsed: ${closeEventObject.reason}`;
+                            break;
+                        case 1006: // network problem (e.g. your websocket server is not running)
+                            socketStatus.innerHTML = "Something is wrong with your WS network connection";
+                            break;
+                        case 1008:
+                            socketStatus.innerHTML = "Server policy violated";
+                            table.innerHTML = "";
+                            serverResponse.innerHTML = `The server responded: ${closeEventObject.reason}`;
+                            break;
+                        case 1009:
+                            socketStatus.innerHTML = `Data too long`;
+                            table.innerHTML = "";
+                            serverResponse.innerHTML = `The server responsed: ${closeEventObject.reason}`;
+                            break;
                         default: // when the client hits the close websocket button
                             socketStatus.innerHTML = `You disconnected by clicking the Close button.`;
+                            serverResponse.innerHTML = `The server responsed: ${closeEventObject.reason}`;
                     }
 
                     // CSS: FORM REMOVAL

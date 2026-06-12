@@ -137,7 +137,11 @@ class WebSocketReceiver {
         console.log(`FIN: ${this._fin}, Opcode: ${this._opcode}, Masked: ${this._masked}, Initial Payload Size Indicator: ${this._initialPayloadSizeIndicator}`);   
 
         if(!this._masked) {
-            throw new Error('Mask is not set by the client')
+            this._sendClose(1002, 'Mask must be set');
+        }
+
+        if([CONSTANTS.OPCODE_PING_FRAME, CONSTANTS.OPCODE_PONG_FRAME].includes(this._opcode)) {
+            this._sendClose(1003, 'The server does not accept ping or pong frames');
         }
 
         this._task = GET_LENGTH;
@@ -183,7 +187,7 @@ class WebSocketReceiver {
         this._totalPayloadLength = this._framePayloadLength;
 
         if(this._totalPayloadLength > this._maximumPayloadSize) {
-            throw new Error('Data is too big');
+            this._sendClose(1009, 'WebSocket server does not support such large message lengths');
         }
 
         this._task = GET_MASK_KEY;
@@ -215,8 +219,8 @@ class WebSocketReceiver {
             return;
         }
 
-        if([CONSTANTS.OPCODE_PING_FRAME, CONSTANTS.OPCODE_PONG_FRAME, CONSTANTS.OPCODE_BINARY_FRAME].includes(this._opcode)) {
-            throw new Error('Server has not dealt with a ping, pong, or binary frame yet');
+        if(this._framePayloadLength <= 0) {
+            this._sendClose(1008, "The text are cannot be empty");
         }
 
         if(!this._fin) {
@@ -326,6 +330,12 @@ class WebSocketReceiver {
         let closeCode = closeFramePayload.readUInt16BE();
         let closeReason = closeFramePayload.toString('utf8', 2);
 
+        if(closeCode === 1001) {
+            this.socket.end();
+            this._resetState();
+            return;
+        }
+
         console.log(`Received close frame with code: ${closeCode} and reason: ${closeReason}`);
 
         let serverResponse = "Please open a new connection";
@@ -352,6 +362,8 @@ class WebSocketReceiver {
         const closeFrame = Buffer.concat([mandatoryCloseHeaders, closeFramePayload]);
 
         this.socket.write(closeFrame);
+        this.socket.end();
+
         this._resetState();
     }
 };
