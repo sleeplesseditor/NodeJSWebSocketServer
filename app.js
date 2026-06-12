@@ -8,6 +8,7 @@ const GET_LENGTH = 2;
 const GET_MASK_KEY = 3;
 const GET_PAYLOAD = 4;
 const SEND_ECHO = 5;
+const GET_CLOSE_INFO = 6;
 
 const HTTP_SERVER = HTTP.createServer((req, res) => {
     res.writeHead(200);
@@ -107,6 +108,9 @@ class WebSocketReceiver {
                 case SEND_ECHO:
                     this._sendEcho();
                     break;
+                case GET_CLOSE_INFO:
+                    this._getCloseInfo();
+                    break;
                 default:
                     break;
             }
@@ -200,19 +204,20 @@ class WebSocketReceiver {
 
         let frameMaskedPayloadBuffer = this._consumePayload(this._framePayloadLength);
 
-        let frameUnmaskedPayloadBuffer = FUNCTIONS.unMaskPayload(frameMaskedPayloadBuffer, this._mask);
+        let frameUnmaskedPayloadBuffer = METHODS.unMaskPayload(frameMaskedPayloadBuffer, this._mask);
+
+        if(frameUnmaskedPayloadBuffer.length) {
+            this._fragments.push(frameUnmaskedPayloadBuffer);
+        };
 
         if(this._opcode === CONSTANTS.OPCODE_CLOSE_FRAME) {
-            throw new Error('Server has not dealt with a closure frame yet');
+            this._task = GET_CLOSE_INFO;
+            return;
         }
 
         if([CONSTANTS.OPCODE_PING_FRAME, CONSTANTS.OPCODE_PONG_FRAME, CONSTANTS.OPCODE_BINARY_FRAME].includes(this._opcode)) {
             throw new Error('Server has not dealt with a ping, pong, or binary frame yet');
         }
-
-        if(frameUnMaskedPayloadBuffer.length) {
-            this._fragments.push(frameUnmaskedPayloadBuffer);
-        };
 
         if(!this._fin) {
             this._task = GET_INFO;
@@ -222,7 +227,7 @@ class WebSocketReceiver {
         }
     }
 
-    consumePayload(n) {
+    _consumePayload(n) {
         this._bufferedBytesLength -= n;
 
         const payloadBuffer = Buffer.alloc(n);
@@ -308,5 +313,45 @@ class WebSocketReceiver {
         this._mask = Buffer.alloc(CONSTANTS.MASK_LENGTH);
         this._framesReceived = 0;
         this._fragments = [];
+    }
+
+    _getCloseInfo() {
+        let closeFramePayload = this._fragments[0];
+
+        if(!closeFramePayload) {
+            this.sendClose(1008, "Next time, please set the status code");
+            return;
+        }
+
+        let closeCode = closeFramePayload.readUInt16BE();
+        let closeReason = closeFramePayload.toString('utf8', 2);
+
+        console.log(`Received close frame with code: ${closeCode} and reason: ${closeReason}`);
+
+        let serverResponse = "Please open a new connection";
+
+        this._sendClose(closeCode, serverResponse);
+    }
+
+    _sendClose(closeCode, closeReason) {
+        let closureCode = (typeof closeCode !== 'undefined' && closeCode) ? closeCode : 1000;
+        let closureReason = (typeof closeReason !== 'undefined' && closeReason) ? closeReason : '';
+
+        const closureReasonBuffer = Buffer.from(closureReason, 'utf8');
+        const closureReasonLength = closureReasonBuffer.length;
+
+        const closeFramePayload = Buffer.alloc(2 + closureReasonLength);
+
+        closeFramePayload.writeUInt16BE(closureCode, 0);
+        closureReasonBuffer.copy(closeFramePayload, 2);
+
+        const firstByte = 0b10000000 | 0b0000000 | 0b00001000;
+        const secondByte = closeFramePayload.length;
+        const mandatoryCloseHeaders = Buffer.from([firstByte, secondByte]);
+
+        const closeFrame = Buffer.concat([mandatoryCloseHeaders, closeFramePayload]);
+
+        this.socket.write(closeFrame);
+        this._resetState();
     }
 };
