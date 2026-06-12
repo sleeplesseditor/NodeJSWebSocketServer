@@ -283,5 +283,30 @@ class WebSocketReceiver {
             frame[1] = (maskingBit | CONSTANTS.LARGE_DATA_FLAG);
             frame.writeBigUInt64BE(BigInt(payloadLength), CONSTANTS.MIN_FRAME_SIZE);
         }
+
+        const messageOffset = CONSTANTS.MIN_FRAME_SIZE + additionalPayloadSizeIndicator;
+
+        fullMessageBuffer.copy(frame, messageOffset);
+
+        this.socket.write(frame);
+
+        this._resetState();
+    }
+
+    _resetState() {
+        this._buffersArray = [];
+        this._bufferedBytesLength = 0;
+        this._taskLoop = false;
+        this._task = GET_INFO;
+        this._fin = false;
+        this._opcode = null;
+        this._masked = false;
+        this._initialPayloadSizeIndicator = 0;
+        this._framePayloadLength = 0;
+        this._maximumPayloadSize = 1024 * 1024;
+        this._totalPayloadLength = 0;
+        this._mask = Buffer.alloc(CONSTANTS.MASK_LENGTH);
+        this._framesReceived = 0;
+        this._fragments = [];
     }
 };

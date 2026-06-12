@@ -65,7 +65,20 @@
                 // ## EVENT 2 of 4. 
                 // MESSAGE EVENT: handle messages when they are received from server
                 socket.onmessage = function(message) {
-                    // we will write this code together, later
+                    if(messageEvent.data instanceof Blob) {
+                        const reader = new FileReader();
+                        
+                        reader.readAsText(messageEvent.data);
+                        reader.onload = function(e) {
+                            const msg = e.target.result;
+                            console.log("Received message from server: ", msg);
+
+                            table.innerHTML += `<li class="received"><span>RECEIVED:</span>${msg}</li>`;
+                            message.placeholder = `Previous message size: ${msg.length} characters`;
+                        }
+                    } else {
+                        console.log('Received non-Blob data:', messageEvent.data);
+                    }
                 };
 
                 // ## EVENT 3 of 4. 
