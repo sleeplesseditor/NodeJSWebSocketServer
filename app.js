@@ -104,6 +104,9 @@ class WebSocketReceiver {
                 case GET_PAYLOAD:
                     this._getPayload();
                     break;
+                case SEND_ECHO:
+                    this._sendEcho();
+                    break;
                 default:
                     break;
             }
@@ -239,5 +242,46 @@ class WebSocketReceiver {
         }
 
         return payloadBuffer;
+    }
+
+    _sendEcho() {
+        const fullMessageBuffer = Buffer.concat(this._fragments);
+        let payloadLength = fullMessageBuffer.length;
+        let additionalPayloadSizeIndicator = null;
+
+        switch(key) {
+            case (payloadLength <= CONSTANTS.SMALL_DATA_SIZE):
+                additionalPayloadSizeIndicator = 0;
+                break;
+            case (payloadLength > CONSTANTS.SMALL_DATA_SIZE && payloadLength <= CONSTANTS.MEDIUM_DATA_SIZE):
+                additionalPayloadSizeIndicator = CONSTANTS.MEDIUM_SIZE_CONSUMPTION;
+                break;
+            default:
+                additionalPayloadSizeIndicator = CONSTANTS.LARGE_SIZE_CONSUMPTION;
+                break;
+        }
+
+        const frame = Buffer.alloc(CONSTANTS.MIN_FRAME_SIZE + additionalPayloadSizeIndicator + payloadLength);
+
+        let fin = 0x01;
+        let rsv1 = 0x00;
+        let rsv2 = 0x00;
+        let rsv3 = 0x00;
+        let opcode = CONSTANTS.OPCODE_BINARY_FRAME;
+
+        let firstByte = (fin << 7) | (rsv1 << 6) | (rsv2 << 5) | (rsv3 << 4) | opcode;
+        frame[0] = firstByte;
+
+        let maskingBit = 0x00;
+
+        if(payloadLength <= CONSTANTS.SMALL_DATA_SIZE) {
+            frame[1] = (maskingBit | payloadLength);
+        } else if(payloadLength <= CONSTANTS.MEDIUM_DATA_SIZE) {
+            frame[1] = (maskingBit | CONSTANTS.MEDIUM_DATA_FLAG);
+            frame.writeUInt16BE(payloadLength, CONSTANTS.MIN_FRAME_SIZE);
+        } else {
+            frame[1] = (maskingBit | CONSTANTS.LARGE_DATA_FLAG);
+            frame.writeBigUInt64BE(BigInt(payloadLength), CONSTANTS.MIN_FRAME_SIZE);
+        }
     }
 };
