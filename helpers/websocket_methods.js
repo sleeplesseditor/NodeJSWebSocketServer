@@ -1,5 +1,5 @@
-const CONSTANTS = require('./websocket_constants');
-const crypto = require('crypto');
+import CONSTANTS from './websocket_constants.js';
+import crypto from 'crypto';
 
 function isOriginAllowed(origin) {
     return CONSTANTS.ALLOWED_ORIGINS.includes(origin);
@@ -50,9 +50,9 @@ function unMaskPayload(payloadBuffer, maskKey) {
     return payloadBuffer;
 }
 
-module.exports = {
+export default {
     isOriginAllowed,
     check,
     createUpgradeHeaders,
     unMaskPayload
-}
+};

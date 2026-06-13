@@ -1,4 +1,4 @@
-module.exports = {
+export default {
     PORT: 8080,
     CUSTOM_ERRORS: [
         'uncaughtException',
