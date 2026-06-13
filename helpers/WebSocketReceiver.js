@@ -205,7 +205,7 @@ export class WebSocketReceiver {
         let payloadLength = fullMessageBuffer.length;
         let additionalPayloadSizeIndicator = null;
 
-        switch(key) {
+        switch(true) {
             case (payloadLength <= CONSTANTS.SMALL_DATA_SIZE):
                 additionalPayloadSizeIndicator = 0;
                 break;
