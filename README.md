@@ -12,6 +12,7 @@ A WebSocket Server built using Node JS and without third-party libraries, as par
 
 ## Example Screenshots
 <img width="778" height="463" alt="Screenshot 2026-06-13 at 15 22 45" src="https://github.com/user-attachments/assets/2acab64e-30ce-4301-b983-87602355864f" />
+
 Example of HTML UI from coursework with message display
 
 ## Changes from Original Project
