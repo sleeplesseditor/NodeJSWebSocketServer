@@ -21,6 +21,7 @@ Example of HTML UI from coursework with message display
 
 ## Potential Future Revisions
 - Create React JS boilerplate app for frontend
+- Add unit test coverage for server and future UI alternatives
 
 ## Local Setup Instructions
 - CD into project folder
